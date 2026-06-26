@@ -1,6 +1,6 @@
 {
-  "name": "mc-discord-bot",
-  "version": "1.0.0",
+  "name": "mc-discord-pro-bot",
+  "version": "3.0.0",
   "main": "index.js",
   "type": "commonjs",
   "scripts": {
@@ -9,6 +9,8 @@
   "dependencies": {
     "discord.js": "^14.16.0",
     "express": "^4.19.2",
-    "mineflayer": "^4.20.0"
+    "mineflayer": "^4.20.0",
+    "mineflayer-pathfinder": "^2.4.5",
+    "minecraft-data": "^3.0.0"
   }
 }
