@@ -244,14 +244,59 @@ new ButtonBuilder()
 }
 
 if (i.customId === 'ادارة') {
+
+  const row = new ActionRowBuilder().addComponents(
+
+    new ButtonBuilder()
+      .setCustomId("players")
+      .setLabel("👥 اللاعبين")
+      .setStyle(ButtonStyle.Primary),
+
+    new ButtonBuilder()
+      .setCustomId("tp")
+      .setLabel("📥 سحب")
+      .setStyle(ButtonStyle.Success),
+
+    new ButtonBuilder()
+      .setCustomId("kick")
+      .setLabel("👢 طرد")
+      .setStyle(ButtonStyle.Danger),
+
+    new ButtonBuilder()
+      .setCustomId("ban")
+      .setLabel("🔨 باند")
+      .setStyle(ButtonStyle.Danger),
+
+    new ButtonBuilder()
+      .setCustomId("unban")
+      .setLabel("🔓 فك باند")
+      .setStyle(ButtonStyle.Secondary)
+
+  );
+
+  return i.reply({
+    content: "🛡️ قائمة الإدارة",
+    components: [row],
+    ephemeral: true
+  });
+
+}
+
 if (i.customId === "players") {
 
-  const players = Object.keys(bot.players);
+  if (!bot) {
+    return i.reply({
+      content: "❌ بوت ماينكرافت غير شغال.",
+      ephemeral: true
+    });
+  }
+
+  const players = Object.keys(bot.players || {});
 
   return i.reply({
     content: players.length
-      ? "👥 اللاعبين المتصلين:\n\n" + players.join("\n")
-      : "❌ لا يوجد لاعبين متصلين.",
+      ? "👥 اللاعبين:\n\n" + players.join("\n")
+      : "❌ لا يوجد لاعبين.",
     ephemeral: true
   });
 
