@@ -222,91 +222,94 @@ new ButtonBuilder()
     }
   });
 
-// 🎮 الأزرار
-client.on('interactionCreate', async (i) => {
+  // 🎮 الأزرار
+  client.on('interactionCreate', async (i) => {
 
-  if (!i.isButton()) return;
+    if (!i.isButton()) return;
 
-  if (i.user.id !== OWNER_ID) {
-    return i.reply({
-      content: "❌ ممنوع",
-      ephemeral: true
-    });
-  }
-
-  if (i.customId === "تشغيل") {
-    bot?.setControlState("forward", true);
-    return i.reply("🟢 البوت شغال");
-  }
-
-  if (i.customId === "ايقاف") {
-    bot?.clearControlStates();
-    return i.reply("🔴 البوت متوقف");
-  }
-
-  if (i.customId === "حالة") {
-    return i.reply(`📊 اللاعبين: ${Object.keys(bot?.players || {}).length}`);
-  }
-
-  if (i.customId === "ادارة") {
-
-    const row = new ActionRowBuilder().addComponents(
-
-      new ButtonBuilder()
-        .setCustomId("players")
-        .setLabel("👥 اللاعبين")
-        .setStyle(ButtonStyle.Primary),
-
-      new ButtonBuilder()
-        .setCustomId("tp")
-        .setLabel("📥 سحب")
-        .setStyle(ButtonStyle.Success),
-
-      new ButtonBuilder()
-        .setCustomId("goto")
-        .setLabel("📍 انتقال")
-        .setStyle(ButtonStyle.Success),
-
-      new ButtonBuilder()
-        .setCustomId("kick")
-        .setLabel("👢 طرد")
-        .setStyle(ButtonStyle.Danger),
-
-      new ButtonBuilder()
-        .setCustomId("ban")
-        .setLabel("🔨 باند")
-        .setStyle(ButtonStyle.Danger)
-
-    );
-
-    return i.reply({
-      content: "🛡️ قائمة الإدارة",
-      components: [row],
-      ephemeral: true
-    });
-  }
-
-  if (i.customId === "players") {
-
-    if (!bot) {
+    if (i.user.id !== OWNER_ID) {
       return i.reply({
-        content: "❌ بوت ماينكرافت غير شغال.",
+        content: "❌ ممنوع",
         ephemeral: true
       });
     }
 
-    const players = Object.keys(bot.players || {});
+    if (i.customId === "تشغيل") {
+      bot?.setControlState("forward", true);
+      return i.reply("🟢 البوت شغال");
+    }
 
-    return i.reply({
-      content: players.length
-        ? "👥 اللاعبين المتصلين:\n\n" + players.join("\n")
-        : "❌ لا يوجد لاعبين متصلين.",
-      ephemeral: true
-    });
+    if (i.customId === "ايقاف") {
+      bot?.clearControlStates();
+      return i.reply("🔴 البوت متوقف");
+    }
 
-  }
+    if (i.customId === "حالة") {
+      return i.reply(`📊 اللاعبين: ${Object.keys(bot?.players || {}).length}`);
+    }
 
-});
+    if (i.customId === "ادارة") {
+
+      const row = new ActionRowBuilder().addComponents(
+
+        new ButtonBuilder()
+          .setCustomId("players")
+          .setLabel("👥 اللاعبين")
+          .setStyle(ButtonStyle.Primary),
+
+        new ButtonBuilder()
+          .setCustomId("tp")
+          .setLabel("📥 سحب")
+          .setStyle(ButtonStyle.Success),
+
+        new ButtonBuilder()
+          .setCustomId("goto")
+          .setLabel("📍 انتقال")
+          .setStyle(ButtonStyle.Success),
+
+        new ButtonBuilder()
+          .setCustomId("kick")
+          .setLabel("👢 طرد")
+          .setStyle(ButtonStyle.Danger),
+
+        new ButtonBuilder()
+          .setCustomId("ban")
+          .setLabel("🔨 باند")
+          .setStyle(ButtonStyle.Danger)
+
+      );
+
+      return i.reply({
+        content: "🛡️ قائمة الإدارة",
+        components: [row],
+        ephemeral: true
+      });
+    }
+
+    if (i.customId === "players") {
+
+      if (!bot) {
+        return i.reply({
+          content: "❌ بوت ماينكرافت غير شغال.",
+          ephemeral: true
+        });
+      }
+
+      const players = Object.keys(bot.players || {});
+
+      return i.reply({
+        content: players.length
+          ? "👥 اللاعبين المتصلين:\n\n" + players.join("\n")
+          : "❌ لا يوجد لاعبين متصلين.",
+        ephemeral: true
+      });
+
+    }
+
+  }); // ✅ إغلاق interactionCreate
+
+}); // ✅ إغلاق ready
+
 // ================= START =================
 client.login(process.env.DISCORD_TOKEN);
 startBot();
