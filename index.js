@@ -144,23 +144,25 @@ async function updateServerStatus() {
 
 function startBot() {
 
+  console.log("⏳ محاولة الاتصال بالسيرفر...");
+
   try {
 
     bot = mineflayer.createBot({
       host: process.env.MC_HOST,
       port: parseInt(process.env.MC_PORT) || 25565,
-      username: "𝗜𝗿𝗮𝗾 𝗕𝗮𝗯𝘆𝗹𝗼𝗻 𝗦𝗠𝗣",
+      username: "IraqBabylonSMP",
       auth: 'offline',
-      version: "1.20.4",  // ← الإصدار المطلوب
+      version: "1.20.4",
       hideErrors: true,
       logErrors: false,
-      checkTimeoutInterval: 60000,
+      checkTimeoutInterval: 120000,
       keepAlive: true,
-      keepAliveInterval: 15000
+      keepAliveInterval: 20000
     });
 
     bot.on('spawn', () => {
-      console.log("🟢 Bot Online");
+      console.log("🟢 Bot Online - IraqBabylonSMP");
       setInterval(humanMovement, 4000 + Math.random() * 2000);
       
       setTimeout(() => updateServerStatus(), 5000);
@@ -207,22 +209,33 @@ function startBot() {
     });
 
     bot.on('end', () => {
-      console.log("🔄 Reconnecting...");
-      setTimeout(startBot, 15000);
+      console.log("🔄 Reconnecting in 10 seconds...");
+      setTimeout(startBot, 10000);  // ← 10 ثواني
     });
 
     bot.on('kicked', (r) => {
       console.log("❌ Kicked:", r);
-      setTimeout(startBot, 20000);
+      if (typeof r === 'string' && r.includes('Connection throttled')) {
+        console.log("⏳ انتظر 3 دقائق...");
+        setTimeout(startBot, 180000);
+      } else {
+        setTimeout(startBot, 10000);  // ← 10 ثواني
+      }
     });
 
     bot.on('error', (e) => {
       console.log("⚠️ Error:", e.message);
+      if (e.message.includes('ECONNRESET')) {
+        console.log("⏳ انتظر دقيقتين...");
+        setTimeout(startBot, 120000);
+      } else {
+        setTimeout(startBot, 10000);  // ← 10 ثواني
+      }
     });
 
   } catch (e) {
     console.log("💥 Crash:", e.message);
-    setTimeout(startBot, 15000);
+    setTimeout(startBot, 10000);  // ← 10 ثواني
   }
 }
 
@@ -533,4 +546,4 @@ client.once('ready', () => {
 });
 
 client.login(process.env.DISCORD_TOKEN);
-setTimeout(startBot, 15000);
+setTimeout(startBot, 10000);  // ← 10 ثواني
