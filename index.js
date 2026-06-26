@@ -2,7 +2,10 @@ const mineflayer = require('mineflayer');
 const fs = require('fs');
 const {
   Client,
-  GatewayIntentBits
+  GatewayIntentBits,
+  ActionRowBuilder,
+  ButtonBuilder,
+  ButtonStyle
 } = require('discord.js');
 
 // ================= OWNER =================
@@ -25,8 +28,107 @@ function saveAllowed() {
   fs.writeFileSync(FILE, JSON.stringify([...allowedPlayers]));
 }
 
-// ================= BOT STATE =================
+function isOwner(msg) {
+  return msg.author.id === OWNER_ID;
+}
+
+// ================= BOT =================
 let bot;
+
+// 🤖 حركة لاعب حقيقي (مطورة)
+function humanMovement() {
+  if (!bot || !bot.entity) return;
+
+  const actions = ["forward", "back", "left", "right"];
+  const action = actions[Math.floor(Math.random() * actions.length)];
+
+  bot.clearControlStates();
+  bot.setControlState(action, true);
+
+  setTimeout(() => {
+    bot.clearControlStates();
+  }, 1500 + Math.random() * 2500);
+
+  setTimeout(() => {
+    bot.look(
+      Math.random() * Math.PI * 2,
+      (Math.random() - 0.5) * 0.5
+    );
+  }, 1000);
+
+  if (Math.random() > 0.92) {
+    bot.setControlState('jump', true);
+    setTimeout(() => bot.setControlState('jump', false), 300);
+  }
+}
+
+// ================= START BOT =================
+function startBot() {
+
+  try {
+
+    bot = mineflayer.createBot({
+      host: process.env.MC_HOST,
+      port: process.env.MC_PORT,
+      username: process.env.MC_USERNAME,
+      auth: 'offline',
+      version: "1.21.11"
+    });
+
+    bot.on('spawn', () => {
+      console.log("🟢 Bot Online");
+
+      setInterval(humanMovement, 4000 + Math.random() * 2000);
+    });
+
+    // 🚫 WHITELIST SYSTEM
+    bot.on('playerJoined', (p) => {
+
+      const name = p.username.toLowerCase();
+
+      if (!allowedPlayers.has(name)) {
+        setTimeout(() => {
+          bot.chat(`/kick ${p.username} ❌ غير مفعل`);
+        }, 2000);
+      }
+    });
+
+    // 🤖 AI CHAT
+    bot.on('chat', (user, msg) => {
+
+      const text = msg.toLowerCase();
+
+      const ai = {
+        "hi": "هلا 👋",
+        "hello": "أهلاً 😄",
+        "gg": "GG 🔥",
+        "bye": "باي 👋",
+        "شلونك": "تمام وانت؟ 😄"
+      };
+
+      if (ai[text]) {
+        setTimeout(() => bot.chat(ai[text]), 1200);
+      }
+    });
+
+    // 🔁 SAFE RECONNECT
+    bot.on('end', () => {
+      console.log("🔄 Reconnecting...");
+      setTimeout(startBot, 5000);
+    });
+
+    bot.on('kicked', (r) => {
+      console.log("❌ Kicked:", r);
+      setTimeout(startBot, 7000);
+    });
+
+    bot.on('error', (e) => console.log("⚠️ Error:", e.message));
+
+  } catch (e) {
+    console.log("💥 Crash:", e.message);
+    setTimeout(startBot, 5000);
+  }
+}
 
 // ================= DISCORD =================
 const client = new Client({
@@ -37,115 +139,102 @@ const client = new Client({
   ]
 });
 
-function isOwner(msg) {
-  return msg.author.id === OWNER_ID;
-}
-
-// ================= MINECRAFT BOT =================
-function startBot() {
-
-  bot = mineflayer.createBot({
-    host: process.env.MC_HOST,
-    port: process.env.MC_PORT,
-    username: process.env.MC_USERNAME,
-    auth: 'offline',
-    version: "1.21.11"
-  });
-
-  bot.on('spawn', () => {
-    console.log("🟢 Bot Online");
-
-    // حركة بسيطة
-    setInterval(() => {
-      if (!bot || !bot.entity) return;
-
-      bot.setControlState('forward', true);
-
-      if (Math.random() > 0.7) {
-        bot.setControlState('jump', true);
-        setTimeout(() => bot.setControlState('jump', false), 300);
-      }
-
-    }, 4000);
-  });
-
-  // ================= WHITELIST SYSTEM =================
-  bot.on('playerJoined', (p) => {
-
-    const name = p.username.toLowerCase();
-
-    if (!allowedPlayers.has(name)) {
-
-      setTimeout(() => {
-        bot.chat(`/kick ${p.username} ❌ غير مفعل - تواصل مع الإدارة`);
-      }, 2000);
-
-    } else {
-      console.log("✔ Allowed:", p.username);
-    }
-  });
-
-  // ================= RECONNECT =================
-  bot.on('end', () => {
-    console.log("🔄 Reconnecting...");
-    setTimeout(startBot, 5000);
-  });
-
-  bot.on('error', (e) => console.log("Error:", e.message));
-}
-
-// ================= DISCORD COMMANDS =================
 client.once('ready', () => {
 
   console.log("Discord Ready");
 
   client.on('messageCreate', (msg) => {
 
-    if (!msg.content.startsWith("!") && !msg.content.startsWith("!تفعيل") && !msg.content.startsWith("!الغاء")) return;
-
-    // ================= OWNER CHECK =================
+    if (!msg.content.startsWith("!")) return;
     if (!isOwner(msg)) return;
 
-    // ================= ACTIVATE PLAYER =================
-    if (msg.content.startsWith("!تفعيل ")) {
+    const args = msg.content.split(" ");
+    const cmd = args[0];
 
-      const name = msg.content.split(" ")[1].toLowerCase();
+    // 🎛️ لوحة التحكم
+    if (cmd === "!لوحة") {
+
+      const row = new ActionRowBuilder().addComponents(
+
+        new ButtonBuilder()
+          .setCustomId('تشغيل')
+          .setLabel('🟢 تشغيل')
+          .setStyle(ButtonStyle.Success),
+
+        new ButtonBuilder()
+          .setCustomId('ايقاف')
+          .setLabel('🔴 إيقاف')
+          .setStyle(ButtonStyle.Danger),
+
+        new ButtonBuilder()
+          .setCustomId('حالة')
+          .setLabel('📊 حالة')
+          .setStyle(ButtonStyle.Primary)
+      );
+
+      return msg.reply({ content: "🎛️ لوحة التحكم", components: [row] });
+    }
+
+    // ✔ تفعيل لاعب
+    if (cmd === "!تفعيل") {
+      const name = args[1]?.toLowerCase();
+      if (!name) return;
 
       allowedPlayers.add(name);
       saveAllowed();
 
-      msg.reply(`✅ تم تفعيل: ${name}`);
+      return msg.reply(`✅ تم تفعيل: ${name}`);
     }
 
-    // ================= REMOVE PLAYER =================
-    if (msg.content.startsWith("!الغاء ")) {
-
-      const name = msg.content.split(" ")[1].toLowerCase();
+    // ❌ إلغاء تفعيل
+    if (cmd === "!الغاء") {
+      const name = args[1]?.toLowerCase();
+      if (!name) return;
 
       allowedPlayers.delete(name);
       saveAllowed();
 
-      msg.reply(`❌ تم إلغاء: ${name}`);
+      return msg.reply(`❌ تم إلغاء: ${name}`);
     }
 
-    // ================= SAY =================
-    if (msg.content.startsWith("!say ")) {
-
+    // 💬 إرسال رسالة داخل ماينكرافت
+    if (cmd === "!say") {
       const text = msg.content.slice(5);
       bot?.chat(text);
-
-      msg.reply("💬 تم الإرسال");
+      return msg.reply("💬 تم الإرسال");
     }
 
-    // ================= RESTART =================
-    if (msg.content === "!restart") {
+    // 🔄 إعادة تشغيل
+    if (cmd === "!restart") {
       bot?.end();
-      msg.reply("🔄 إعادة تشغيل...");
+      return msg.reply("🔄 إعادة تشغيل...");
     }
 
-    // ================= LIST =================
-    if (msg.content === "!المفعلين") {
-      msg.reply("📋 " + [...allowedPlayers].join(", "));
+    // 📋 قائمة المفعلين
+    if (cmd === "!المفعلين") {
+      return msg.reply([...allowedPlayers].join(", ") || "فارغ");
+    }
+  });
+
+  // 🎮 الأزرار
+  client.on('interactionCreate', async (i) => {
+
+    if (!i.isButton()) return;
+    if (i.user.id !== OWNER_ID)
+      return i.reply({ content: "❌ ممنوع", ephemeral: true });
+
+    if (i.customId === 'تشغيل') {
+      bot?.setControlState('forward', true);
+      return i.reply("🟢 البوت شغال");
+    }
+
+    if (i.customId === 'ايقاف') {
+      bot?.clearControlStates();
+      return i.reply("🔴 البوت متوقف");
+    }
+
+    if (i.customId === 'حالة') {
+      return i.reply(`📊 اللاعبين: ${Object.keys(bot?.players || {}).length}`);
     }
   });
 
