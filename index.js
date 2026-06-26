@@ -19,7 +19,7 @@ const OWNER_ID = "1221550661263429787";
 // ================= CONFIG =================
 const ADMIN_CHANNEL_ID = "1519954672994226196";
 const PUBLIC_CHANNEL_ID = "1519685707709550622";
-const REQUEST_CHANNEL_ID = "ايدي_روم_الطلبات_هنا";  // ← غير هذا لأيدي روم الطلبات
+const REQUEST_CHANNEL_ID ="1520173000312488146";
 
 // ================= DATA =================
 const FILE = "./allowed.json";
