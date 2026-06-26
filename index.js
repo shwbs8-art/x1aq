@@ -128,7 +128,7 @@ async function updateServerStatus() {
       new ButtonBuilder()
         .setLabel("🚀 انضم الآن")
         .setStyle(ButtonStyle.Link)
-        .setURL(`minecraft://?server=${process.env.MC_HOST}:${process.env.MC_PORT}`)
+        .setURL(`https://www.google.com/`)
     );
 
     if (statusMessage) {
@@ -315,7 +315,7 @@ client.once('ready', () => {
         new ButtonBuilder()
           .setLabel("🚀 انضم الآن")
           .setStyle(ButtonStyle.Link)
-          .setURL(`minecraft://?server=${process.env.MC_HOST}:${process.env.MC_PORT}`)
+          .setURL(`https://www.google.com/`)
       );
 
       return msg.reply({ embeds: [embed], components: [row] });
