@@ -1,40 +1,60 @@
 const mineflayer = require('mineflayer');
-const { pathfinder, Movements, goals } = require('mineflayer-pathfinder');
-const mcDataLoader = require('minecraft-data');
 const express = require('express');
-const mongoose = require('mongoose');
-const {
-  Client,
-  GatewayIntentBits,
-  ActionRowBuilder,
-  ButtonBuilder,
-  ButtonStyle
-} = require('discord.js');
+const { Client, GatewayIntentBits } = require('discord.js');
 
-const { GoalNear } = goals;
+// ================= CONFIG =================
+const PORT = process.env.PORT || 3000;
+const DASH_KEY = process.env.DASHBOARD_KEY;
 
-// ================= DATABASE =================
-mongoose.connect(process.env.MONGO_URL)
-  .then(() => console.log("MongoDB Connected"));
+// ================= STATE =================
+let bot;
+let playersCount = 0;
+let botStatus = "offline";
 
-const PlayerSchema = new mongoose.Schema({
-  name: String,
-  action: String,
-  time: { type: Date, default: Date.now }
+// ================= EXPRESS (DASHBOARD) =================
+const app = express();
+app.use(express.json());
+
+// 🌐 Home page
+app.get('/', (req, res) => {
+  res.send("MC Bot Dashboard Running ✅");
 });
 
-const PlayerLog = mongoose.model("PlayerLog", PlayerSchema);
-
-// ================= WEB =================
-const app = express();
-app.get('/', (req, res) => res.send("Bot Running"));
-app.get('/status', (req, res) => {
+// 📊 Dashboard JSON API
+app.get('/api/status', (req, res) => {
   res.json({
-    status: "online",
+    status: botStatus,
     players: playersCount
   });
 });
-app.listen(3000);
+
+// 🎛️ CONTROL API (Dashboard buttons)
+app.post('/api/control', (req, res) => {
+
+  if (req.headers.key !== DASH_KEY) {
+    return res.status(403).send("No Access");
+  }
+
+  const action = req.body.action;
+
+  if (action === "restart") {
+    restartBot();
+    return res.json({ ok: true, msg: "restarted" });
+  }
+
+  if (action === "say") {
+    if (bot && req.body.message) {
+      bot.chat(req.body.message);
+      return res.json({ ok: true });
+    }
+  }
+
+  res.json({ ok: false });
+});
+
+app.listen(PORT, () => {
+  console.log("Dashboard running on port " + PORT);
+});
 
 // ================= DISCORD =================
 const client = new Client({
@@ -45,19 +65,8 @@ const client = new Client({
   ]
 });
 
-let bot;
-let mcData;
-let move;
-let playersCount = 0;
-
-// ================= LOG =================
 function log(msg) {
   const ch = client.channels.cache.get(process.env.LOG_CHANNEL_ID);
-  if (ch) ch.send(msg).catch(() => {});
-}
-
-function status(msg) {
-  const ch = client.channels.cache.get(process.env.CHANNEL_ID);
   if (ch) ch.send(msg).catch(() => {});
 }
 
@@ -72,162 +81,105 @@ function startBot() {
     version: "1.21.11"
   });
 
-  bot.loadPlugin(pathfinder);
+  botStatus = "connecting";
 
   bot.on('spawn', () => {
+    botStatus = "online";
+    log("🟢 Bot Connected");
 
-    log("🟢 Bot Online");
-
-    mcData = mcDataLoader(bot.version);
-    move = new Movements(bot, mcData);
-    bot.pathfinder.setMovements(move);
-
-    smartAI();
-    startWelcomeMessages();
-  });
-
-  // ================= SMART AI =================
-  function smartAI() {
+    // حركة بسيطة
     setInterval(() => {
-
       if (!bot || !bot.entity) return;
 
-      try {
-        const pos = bot.entity.position;
+      bot.setControlState('forward', true);
 
-        const x = pos.x + (Math.random() * 14 - 7);
-        const z = pos.z + (Math.random() * 14 - 7);
+      if (Math.random() > 0.7) {
+        bot.setControlState('jump', true);
+        setTimeout(() => bot.setControlState('jump', false), 300);
+      }
 
-        bot.pathfinder.setGoal(new GoalNear(x, pos.y, z, 1));
-
-        bot.look(
-          Math.random() * Math.PI * 2,
-          (Math.random() - 0.5) * 0.5,
-          true
-        );
-
-        if (Math.random() > 0.7) {
-          bot.setControlState('jump', true);
-          setTimeout(() => bot.setControlState('jump', false), 300);
-        }
-
-      } catch {}
     }, 4000);
-  }
-
-  // ================= WELCOME MESSAGE (EVERY HOUR) =================
-  function startWelcomeMessages() {
-
-    const serverName = "🏰 عراق بابلون";
-
-    setInterval(() => {
-
-      if (!bot || !bot.entity) return;
-
-      const messages = [
-        `✨ أهلاً بكم في ${serverName} 🔥`,
-        `👋 مرحباً! استمتعوا في ${serverName}`,
-        `🏰 ${serverName} يرحب بجميع اللاعبين ❤️`,
-        `🔥 لا تنسون قواعد ${serverName}`
-      ];
-
-      const msg = messages[Math.floor(Math.random() * messages.length)];
-
-      bot.chat(msg);
-
-    }, 60 * 60 * 1000);
-  }
-
-  // ================= PLAYERS =================
-  bot.on('playerJoined', async (p) => {
-    playersCount = Object.keys(bot.players).length;
-    log(`🟢 دخل: ${p.username}`);
-
-    await PlayerLog.create({
-      name: p.username,
-      action: "join"
-    });
   });
 
-  bot.on('playerLeft', async (p) => {
+  // 👥 Players tracking
+  bot.on('playerJoined', (p) => {
     playersCount = Object.keys(bot.players).length;
-    log(`🔴 طلع: ${p.username}`);
-
-    await PlayerLog.create({
-      name: p.username,
-      action: "leave"
-    });
+    log(`🟢 Joined: ${p.username}`);
   });
 
-  // ================= CHAT =================
+  bot.on('playerLeft', (p) => {
+    playersCount = Object.keys(bot.players).length;
+    log(`🔴 Left: ${p.username}`);
+  });
+
+  // 💬 chat relay
   bot.on('chat', (u, msg) => {
     log(`💬 ${u}: ${msg}`);
   });
 
-  // ================= AUTO RECONNECT =================
+  // 🔄 restart
   bot.on('end', () => {
-    log("🔄 Restarting Bot...");
+    botStatus = "offline";
     setTimeout(startBot, 5000);
   });
 
-  bot.on('error', (e) => log("⚠️ " + e.message));
+  bot.on('error', (e) => {
+    log("⚠️ " + e.message);
+  });
 }
 
-// ================= DISCORD READY =================
+// ================= DISCORD =================
 client.once('ready', () => {
-
   console.log("Discord Ready");
 
-  setInterval(() => {
-    status(`📊 Online\n👥 Players: ${playersCount}`);
-  }, 300000);
-
-  client.on('messageCreate', async (msg) => {
+  // panel command
+  client.on('messageCreate', (msg) => {
 
     if (msg.content === "!panel") {
+      msg.reply(`
+🎛️ Dashboard Commands:
 
-      const row = new ActionRowBuilder().addComponents(
-        new ButtonBuilder()
-          .setCustomId('status')
-          .setLabel('Status')
-          .setStyle(ButtonStyle.Success),
+📊 GET STATUS:
+GET /api/status
 
-        new ButtonBuilder()
-          .setCustomId('restart')
-          .setLabel('Restart Bot')
-          .setStyle(ButtonStyle.Danger)
-      );
-
-      msg.reply({
-        content: "🎛️ Control Panel",
-        components: [row]
-      });
-    }
-  });
-
-  client.on('interactionCreate', async (i) => {
-
-    if (!i.isButton()) return;
-
-    if (i.customId === 'status') {
-      i.reply(`🟢 Online\n👥 Players: ${playersCount}`);
+🎮 CONTROL:
+POST /api/control
+- restart
+- say
+      `);
     }
 
-    if (i.customId === 'restart') {
-      i.reply("🔄 Restarting...");
-      bot?.end();
+    // 💬 send message to minecraft
+    if (msg.content.startsWith("!say ")) {
+      const text = msg.content.slice(5);
+      if (bot) bot.chat(text);
     }
+
+    // 🔄 restart bot
+    if (msg.content === "!restart") {
+      restartBot();
+      msg.reply("🔄 Restarting...");
+    }
+
   });
 });
+
+// ================= SAFE RESTART =================
+function restartBot() {
+  try {
+    bot?.end();
+  } catch {}
+  setTimeout(startBot, 3000);
+}
 
 // ================= CRASH PROTECTION =================
-process.on('uncaughtException', (err) => {
-  log("💥 Crash: " + err.message);
-  setTimeout(() => startBot(), 5000);
+process.on('uncaughtException', (e) => {
+  console.log("Crash:", e.message);
+  restartBot();
 });
 
-process.on('unhandledRejection', (err) => {
-  log("💥 Error: " + err);
+process.on('unhandledRejection', () => {
+  restartBot();
 });
 
 // ================= START =================
