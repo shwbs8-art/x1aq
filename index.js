@@ -6,11 +6,16 @@ const {
   ActionRowBuilder,
   ButtonBuilder,
   ButtonStyle,
-  StringSelectMenuBuilder
+  StringSelectMenuBuilder,
+  EmbedBuilder
 } = require('discord.js');
 
 // ================= OWNER =================
 const OWNER_ID = "1221550661263429787";
+
+// ================= CONFIG =================
+const ADMIN_CHANNEL_ID = "1519954672994226196";
+const PUBLIC_CHANNEL_ID = "1519685707709550622";
 
 // ================= DATA =================
 const FILE = "./allowed.json";
@@ -35,8 +40,9 @@ function isOwner(msg) {
 
 // ================= BOT =================
 let bot;
+let statusMessage = null;
+let statusInterval = null;
 
-// 🤖 حركة لاعب حقيقي (مطورة)
 function humanMovement() {
   if (!bot || !bot.entity) return;
 
@@ -63,38 +69,117 @@ function humanMovement() {
   }
 }
 
-// ================= START BOT =================
+async function updateServerStatus() {
+  try {
+    const channel = client.channels.cache.get(PUBLIC_CHANNEL_ID);
+    if (!channel) return;
+
+    const players = Object.keys(bot?.players || {});
+    const count = players.length;
+    const maxPlayers = 20;
+
+    let statusText = "";
+    let color = 0x00FF00;
+
+    if (count === 0) {
+      statusText = "🟢 السيرفر فاضي";
+      color = 0x00FF00;
+    } else if (count <= 5) {
+      statusText = `🟢 اللاعبين ${count}`;
+      color = 0x00FF00;
+    } else if (count <= 10) {
+      statusText = `🟡 عدد اللاعبين ${count}`;
+      color = 0xFFFF00;
+    } else if (count <= 15) {
+      statusText = `🟠 عدد اللاعبين ${count}`;
+      color = 0xFFA500;
+    } else {
+      statusText = `🔴 السيرفر مزدحم (${count})`;
+      color = 0xFF0000;
+    }
+
+    const embed = new EmbedBuilder()
+      .setTitle("🎮 𝗜𝗿𝗮𝗾 𝗕𝗮𝗯𝘆𝗹𝗼𝗻 𝗦𝗠𝗣")
+      .setDescription(`**${statusText}**`)
+      .setColor(color)
+      .addFields(
+        { name: "👥 عدد اللاعبين", value: `${count} / ${maxPlayers}`, inline: true },
+        { name: "📊 الحالة", value: count >= maxPlayers ? "❌ ممتلئ" : "✅ متاح", inline: true },
+        { name: "🕒 آخر تحديث", value: `<t:${Math.floor(Date.now() / 1000)}:R>`, inline: false }
+      )
+      .setFooter({ text: "𝗜𝗿𝗮𝗾 𝗕𝗮𝗯𝘆𝗹𝗼𝗻 𝗦𝗠𝗣" })
+      .setTimestamp();
+
+    if (count > 0 && count <= 10) {
+      embed.addFields({ 
+        name: "👥 اللاعبين المتصلين", 
+        value: players.join("\n"), 
+        inline: false 
+      });
+    } else if (count > 10) {
+      embed.addFields({ 
+        name: "👥 اللاعبين المتصلين", 
+        value: players.slice(0, 10).join("\n") + `\nو ${count - 10} آخرين...`, 
+        inline: false 
+      });
+    }
+
+    const row = new ActionRowBuilder().addComponents(
+      new ButtonBuilder()
+        .setLabel("🚀 انضم الآن")
+        .setStyle(ButtonStyle.Link)
+        .setURL(`minecraft://?server=${process.env.MC_HOST}:${process.env.MC_PORT}`)
+    );
+
+    if (statusMessage) {
+      await statusMessage.edit({ embeds: [embed], components: [row] });
+    } else {
+      statusMessage = await channel.send({ embeds: [embed], components: [row] });
+    }
+
+  } catch (e) {
+    console.log("⚠️ خطأ في تحديث الحالة:", e.message);
+  }
+}
+
 function startBot() {
 
   try {
 
     bot = mineflayer.createBot({
       host: process.env.MC_HOST,
-      port: process.env.MC_PORT,
-      username: process.env.MC_USERNAME,
+      port: parseInt(process.env.MC_PORT) || 25565,
+      username: "𝗜𝗿𝗮𝗾 𝗕𝗮𝗯𝘆𝗹𝗼𝗻 𝗦𝗠𝗣",
       auth: 'offline',
-      version: "1.21.11"
+      version: false,
+      hideErrors: true,
+      logErrors: false
     });
 
     bot.on('spawn', () => {
       console.log("🟢 Bot Online");
-
       setInterval(humanMovement, 4000 + Math.random() * 2000);
+      
+      setTimeout(() => updateServerStatus(), 5000);
+      if (statusInterval) clearInterval(statusInterval);
+      statusInterval = setInterval(updateServerStatus, 300000);
     });
 
-    // 🚫 WHITELIST SYSTEM
     bot.on('playerJoined', (p) => {
 
       const name = p.username.toLowerCase();
 
       if (!allowedPlayers.has(name)) {
         setTimeout(() => {
-          bot.chat(`/kick ${p.username} ❌ غير مفعل`);
+          try {
+            bot.chat(`/kick ${p.username} ❌ غير مفعل`);
+          } catch (e) {
+            console.log("❌ خطأ في الطرد:", e.message);
+          }
         }, 2000);
       }
     });
 
-    // 🤖 AI CHAT
     bot.on('chat', (user, msg) => {
 
       const text = msg.toLowerCase();
@@ -108,30 +193,36 @@ function startBot() {
       };
 
       if (ai[text]) {
-        setTimeout(() => bot.chat(ai[text]), 1200);
+        setTimeout(() => {
+          try {
+            bot.chat(ai[text]);
+          } catch (e) {
+            console.log("❌ خطأ في الرد:", e.message);
+          }
+        }, 1200);
       }
     });
 
-    // 🔁 SAFE RECONNECT
     bot.on('end', () => {
       console.log("🔄 Reconnecting...");
-      setTimeout(startBot, 5000);
+      setTimeout(startBot, 15000);
     });
 
     bot.on('kicked', (r) => {
       console.log("❌ Kicked:", r);
-      setTimeout(startBot, 7000);
+      setTimeout(startBot, 20000);
     });
 
-    bot.on('error', (e) => console.log("⚠️ Error:", e.message));
+    bot.on('error', (e) => {
+      console.log("⚠️ Error:", e.message);
+    });
 
   } catch (e) {
     console.log("💥 Crash:", e.message);
-    setTimeout(startBot, 5000);
+    setTimeout(startBot, 15000);
   }
 }
 
-// ================= DISCORD =================
 const client = new Client({
   intents: [
     GatewayIntentBits.Guilds,
@@ -144,97 +235,173 @@ client.once('ready', () => {
 
   console.log("Discord Ready");
 
+  // ================= أوامر عامة (للكل) =================
   client.on('messageCreate', (msg) => {
 
+    if (msg.author.bot) return;
+    if (msg.channel.id !== PUBLIC_CHANNEL_ID) return;
+
+    const content = msg.content.toLowerCase();
+
+    if (content.includes("السيرفر شغال") || content.includes("سيرفر شغال") || content === "server") {
+
+      const players = Object.keys(bot?.players || {});
+      const count = players.length;
+      const maxPlayers = 20;
+
+      let statusText = "";
+      let color = 0x00FF00;
+
+      if (count === 0) {
+        statusText = "🟢 السيرفر فاضي";
+        color = 0x00FF00;
+      } else if (count <= 5) {
+        statusText = `🟢 اللاعبين ${count}`;
+        color = 0x00FF00;
+      } else if (count <= 10) {
+        statusText = `🟡 عدد اللاعبين ${count}`;
+        color = 0xFFFF00;
+      } else if (count <= 15) {
+        statusText = `🟠 عدد اللاعبين ${count}`;
+        color = 0xFFA500;
+      } else {
+        statusText = `🔴 السيرفر مزدحم (${count})`;
+        color = 0xFF0000;
+      }
+
+      const embed = new EmbedBuilder()
+        .setTitle("🎮 𝗜𝗿𝗮𝗾 𝗕𝗮𝗯𝘆𝗹𝗼𝗻 𝗦𝗠𝗣")
+        .setDescription(`**${statusText}**`)
+        .setColor(color)
+        .addFields(
+          { name: "👥 عدد اللاعبين", value: `${count} / ${maxPlayers}`, inline: true },
+          { name: "📊 الحالة", value: count >= maxPlayers ? "❌ ممتلئ" : "✅ متاح", inline: true },
+          { name: "🕒 آخر تحديث", value: `<t:${Math.floor(Date.now() / 1000)}:R>`, inline: false }
+        )
+        .setFooter({ text: "𝗜𝗿𝗮𝗾 𝗕𝗮𝗯𝘆𝗹𝗼𝗻 𝗦𝗠𝗣" })
+        .setTimestamp();
+
+      if (count > 0 && count <= 10) {
+        embed.addFields({ 
+          name: "👥 اللاعبين المتصلين", 
+          value: players.join("\n"), 
+          inline: false 
+        });
+      } else if (count > 10) {
+        embed.addFields({ 
+          name: "👥 اللاعبين المتصلين", 
+          value: players.slice(0, 10).join("\n") + `\nو ${count - 10} آخرين...`, 
+          inline: false 
+        });
+      }
+
+      const row = new ActionRowBuilder().addComponents(
+        new ButtonBuilder()
+          .setLabel("🚀 انضم الآن")
+          .setStyle(ButtonStyle.Link)
+          .setURL(`minecraft://?server=${process.env.MC_HOST}:${process.env.MC_PORT}`)
+      );
+
+      return msg.reply({ embeds: [embed], components: [row] });
+    }
+  });
+
+  // ================= أوامر المالك (في الروم المخفي) =================
+  client.on('messageCreate', (msg) => {
+
+    if (msg.channel.id !== ADMIN_CHANNEL_ID) return;
     if (!msg.content.startsWith("!")) return;
     if (!isOwner(msg)) return;
 
     const args = msg.content.split(" ");
     const cmd = args[0];
 
-    // 🎛️ لوحة التحكم
     if (cmd === "!لوحة") {
 
-     const row = new ActionRowBuilder().addComponents(
+      const row = new ActionRowBuilder().addComponents(
+        new ButtonBuilder()
+          .setCustomId("تشغيل")
+          .setLabel("🟢 تشغيل")
+          .setStyle(ButtonStyle.Success),
 
-new ButtonBuilder()
-.setCustomId("تشغيل")
-.setLabel("🟢 تشغيل")
-.setStyle(ButtonStyle.Success),
+        new ButtonBuilder()
+          .setCustomId("ايقاف")
+          .setLabel("🔴 إيقاف")
+          .setStyle(ButtonStyle.Danger),
 
-new ButtonBuilder()
-.setCustomId("ايقاف")
-.setLabel("🔴 إيقاف")
-.setStyle(ButtonStyle.Danger),
+        new ButtonBuilder()
+          .setCustomId("حالة")
+          .setLabel("📊 حالة")
+          .setStyle(ButtonStyle.Primary),
 
-new ButtonBuilder()
-.setCustomId("حالة")
-.setLabel("📊 حالة")
-.setStyle(ButtonStyle.Primary),
-
-new ButtonBuilder()
-.setCustomId("ادارة")
-.setLabel("🛡️ الإدارة")
-.setStyle(ButtonStyle.Secondary)
-
-);
+        new ButtonBuilder()
+          .setCustomId("ادارة")
+          .setLabel("🛡️ الإدارة")
+          .setStyle(ButtonStyle.Secondary)
+      );
 
       return msg.reply({ content: "🎛️ لوحة التحكم", components: [row] });
     }
 
-    // ✔ تفعيل لاعب
     if (cmd === "!تفعيل") {
       const name = args[1]?.toLowerCase();
       if (!name) return;
-
       allowedPlayers.add(name);
       saveAllowed();
-
       return msg.reply(`✅ تم تفعيل: ${name}`);
     }
 
-    // ❌ إلغاء تفعيل
     if (cmd === "!الغاء") {
       const name = args[1]?.toLowerCase();
       if (!name) return;
-
       allowedPlayers.delete(name);
       saveAllowed();
-
       return msg.reply(`❌ تم إلغاء: ${name}`);
     }
 
-    // 💬 إرسال رسالة داخل ماينكرافت
     if (cmd === "!say") {
       const text = msg.content.slice(5);
-      bot?.chat(text);
-      return msg.reply("💬 تم الإرسال");
+      try {
+        bot?.chat(text);
+        return msg.reply("💬 تم الإرسال");
+      } catch (e) {
+        return msg.reply("❌ البوت غير متصل");
+      }
     }
 
-    // 🔄 إعادة تشغيل
     if (cmd === "!restart") {
       bot?.end();
       return msg.reply("🔄 إعادة تشغيل...");
     }
 
-    // 📋 قائمة المفعلين
     if (cmd === "!المفعلين") {
       return msg.reply([...allowedPlayers].join(", ") || "فارغ");
     }
+
+    if (cmd === "!تحديث") {
+      updateServerStatus();
+      return msg.reply("✅ تم تحديث الحالة");
+    }
   });
 
-  // 🎮 الأزرار والقوائم
+  // ================= الأزرار =================
   client.on('interactionCreate', async (i) => {
 
-    // ================= الأزرار =================
-    if (i.isButton()) {
+    if (i.channelId !== ADMIN_CHANNEL_ID) {
+      return i.reply({
+        content: "❌ هذا الروم غير مخصص للتحكم",
+        ephemeral: true
+      });
+    }
 
-      if (i.user.id !== OWNER_ID) {
-        return i.reply({
-          content: "❌ ممنوع",
-          ephemeral: true
-        });
-      }
+    if (i.user.id !== OWNER_ID) {
+      return i.reply({
+        content: "❌ ممنوع",
+        ephemeral: true
+      });
+    }
+
+    if (i.isButton()) {
 
       if (i.customId === "تشغيل") {
         bot?.setControlState("forward", true);
@@ -247,13 +414,13 @@ new ButtonBuilder()
       }
 
       if (i.customId === "حالة") {
-        return i.reply(`📊 اللاعبين: ${Object.keys(bot?.players || {}).length}`);
+        const count = Object.keys(bot?.players || {}).length;
+        return i.reply(`📊 اللاعبين: ${count}/20`);
       }
 
       if (i.customId === "ادارة") {
 
         const row = new ActionRowBuilder().addComponents(
-
           new ButtonBuilder()
             .setCustomId("players")
             .setLabel("👥 اللاعبين")
@@ -278,7 +445,6 @@ new ButtonBuilder()
             .setCustomId("ban")
             .setLabel("🔨 باند")
             .setStyle(ButtonStyle.Danger)
-
         );
 
         return i.reply({
@@ -289,236 +455,79 @@ new ButtonBuilder()
       }
 
       if (i.customId === "players") {
-
         if (!bot) {
-          return i.reply({
-            content: "❌ بوت ماينكرافت غير شغال.",
-            ephemeral: true
-          });
+          return i.reply({ content: "❌ بوت ماينكرافت غير شغال.", ephemeral: true });
         }
-
         const players = Object.keys(bot.players || {});
-
         return i.reply({
           content: players.length
             ? "👥 اللاعبين المتصلين:\n\n" + players.join("\n")
             : "❌ لا يوجد لاعبين متصلين.",
           ephemeral: true
         });
-
       }
 
-      // 📥 سحب لاعب - يعرض قائمة اللاعبين
-      if (i.customId === "tp") {
+      if (["tp", "goto", "kick", "ban"].includes(i.customId)) {
         if (!bot) {
-          return i.reply({
-            content: "❌ بوت ماينكرافت غير شغال.",
-            ephemeral: true
-          });
+          return i.reply({ content: "❌ بوت ماينكرافت غير شغال.", ephemeral: true });
         }
-
         const players = Object.keys(bot.players || {});
         if (players.length === 0) {
-          return i.reply({
-            content: "❌ لا يوجد لاعبين متصلين.",
-            ephemeral: true
-          });
+          return i.reply({ content: "❌ لا يوجد لاعبين متصلين.", ephemeral: true });
         }
 
-        const row = new ActionRowBuilder();
         const select = new StringSelectMenuBuilder()
-          .setCustomId("tp_select")
-          .setPlaceholder("📥 اختر لاعب للسحب")
-          .addOptions(
-            players.map(name => ({
-              label: name,
-              value: name
-            }))
-          );
+          .setCustomId(i.customId + "_select")
+          .setPlaceholder({
+            "tp": "📥 اختر لاعب للسحب",
+            "goto": "📍 اختر لاعب للانتقال",
+            "kick": "👢 اختر لاعب للطرد",
+            "ban": "🔨 اختر لاعب للباند"
+          }[i.customId])
+          .addOptions(players.map(name => ({ label: name, value: name })));
 
-        row.addComponents(select);
+        const row = new ActionRowBuilder().addComponents(select);
 
         return i.reply({
-          content: "📥 اختر اللاعب الذي تريد سحبه:",
-          components: [row],
-          ephemeral: true
-        });
-      }
-
-      // 📍 انتقال إلى لاعب - يعرض قائمة اللاعبين
-      if (i.customId === "goto") {
-        if (!bot) {
-          return i.reply({
-            content: "❌ بوت ماينكرافت غير شغال.",
-            ephemeral: true
-          });
-        }
-
-        const players = Object.keys(bot.players || {});
-        if (players.length === 0) {
-          return i.reply({
-            content: "❌ لا يوجد لاعبين متصلين.",
-            ephemeral: true
-          });
-        }
-
-        const row = new ActionRowBuilder();
-        const select = new StringSelectMenuBuilder()
-          .setCustomId("goto_select")
-          .setPlaceholder("📍 اختر لاعب للانتقال إليه")
-          .addOptions(
-            players.map(name => ({
-              label: name,
-              value: name
-            }))
-          );
-
-        row.addComponents(select);
-
-        return i.reply({
-          content: "📍 اختر اللاعب الذي تريد الانتقال إليه:",
-          components: [row],
-          ephemeral: true
-        });
-      }
-
-      // 👢 طرد لاعب - يعرض قائمة اللاعبين
-      if (i.customId === "kick") {
-        if (!bot) {
-          return i.reply({
-            content: "❌ بوت ماينكرافت غير شغال.",
-            ephemeral: true
-          });
-        }
-
-        const players = Object.keys(bot.players || {});
-        if (players.length === 0) {
-          return i.reply({
-            content: "❌ لا يوجد لاعبين متصلين.",
-            ephemeral: true
-          });
-        }
-
-        const row = new ActionRowBuilder();
-        const select = new StringSelectMenuBuilder()
-          .setCustomId("kick_select")
-          .setPlaceholder("👢 اختر لاعب للطرد")
-          .addOptions(
-            players.map(name => ({
-              label: name,
-              value: name
-            }))
-          );
-
-        row.addComponents(select);
-
-        return i.reply({
-          content: "👢 اختر اللاعب الذي تريد طرده:",
-          components: [row],
-          ephemeral: true
-        });
-      }
-
-      // 🔨 باند لاعب - يعرض قائمة اللاعبين
-      if (i.customId === "ban") {
-        if (!bot) {
-          return i.reply({
-            content: "❌ بوت ماينكرافت غير شغال.",
-            ephemeral: true
-          });
-        }
-
-        const players = Object.keys(bot.players || {});
-        if (players.length === 0) {
-          return i.reply({
-            content: "❌ لا يوجد لاعبين متصلين.",
-            ephemeral: true
-          });
-        }
-
-        const row = new ActionRowBuilder();
-        const select = new StringSelectMenuBuilder()
-          .setCustomId("ban_select")
-          .setPlaceholder("🔨 اختر لاعب للباند")
-          .addOptions(
-            players.map(name => ({
-              label: name,
-              value: name
-            }))
-          );
-
-        row.addComponents(select);
-
-        return i.reply({
-          content: "🔨 اختر اللاعب الذي تريد باند:",
+          content: `اختر اللاعب:`,
           components: [row],
           ephemeral: true
         });
       }
     }
 
-    // ================= قائمة الاختيار (Select Menu) =================
     if (i.isStringSelectMenu()) {
 
-      if (i.user.id !== OWNER_ID) {
-        return i.reply({
-          content: "❌ ممنوع",
-          ephemeral: true
-        });
-      }
-
       const selected = i.values[0];
+      const action = {
+        "tp_select": `/tp ${selected}`,
+        "goto_select": `/tp ${process.env.MC_USERNAME} ${selected}`,
+        "kick_select": `/kick ${selected}`,
+        "ban_select": `/ban ${selected}`
+      }[i.customId];
 
-      // سحب لاعب
-      if (i.customId === "tp_select") {
-        if (!bot) {
-          return i.reply({ content: "❌ بوت ماينكرافت غير شغال.", ephemeral: true });
-        }
-        const target = bot.players[selected];
-        if (!target) {
-          return i.reply({ content: `❌ اللاعب ${selected} غير موجود`, ephemeral: true });
-        }
-        bot.chat(`/tp ${selected}`);
-        return i.reply({ content: `✅ تم سحب ${selected}`, ephemeral: true });
+      const response = {
+        "tp_select": `✅ تم سحب ${selected}`,
+        "goto_select": `✅ تم الانتقال إلى ${selected}`,
+        "kick_select": `✅ تم طرد ${selected}`,
+        "ban_select": `✅ تم باند ${selected}`
+      }[i.customId];
+
+      if (!action || !response) {
+        return i.reply({ content: "❌ أمر غير معروف", ephemeral: true });
       }
 
-      // انتقال إلى لاعب
-      if (i.customId === "goto_select") {
-        if (!bot) {
-          return i.reply({ content: "❌ بوت ماينكرافت غير شغال.", ephemeral: true });
-        }
-        const target = bot.players[selected];
-        if (!target) {
-          return i.reply({ content: `❌ اللاعب ${selected} غير موجود`, ephemeral: true });
-        }
-        bot.chat(`/tp ${process.env.MC_USERNAME} ${selected}`);
-        return i.reply({ content: `✅ تم الانتقال إلى ${selected}`, ephemeral: true });
+      try {
+        bot.chat(action);
+        return i.reply({ content: response, ephemeral: true });
+      } catch (e) {
+        return i.reply({ content: `❌ خطأ: ${e.message}`, ephemeral: true });
       }
-
-      // طرد لاعب
-      if (i.customId === "kick_select") {
-        if (!bot) {
-          return i.reply({ content: "❌ بوت ماينكرافت غير شغال.", ephemeral: true });
-        }
-        bot.chat(`/kick ${selected}`);
-        return i.reply({ content: `✅ تم طرد ${selected}`, ephemeral: true });
-      }
-
-      // باند لاعب
-      if (i.customId === "ban_select") {
-        if (!bot) {
-          return i.reply({ content: "❌ بوت ماينكرافت غير شغال.", ephemeral: true });
-        }
-        bot.chat(`/ban ${selected}`);
-        return i.reply({ content: `✅ تم باند ${selected}`, ephemeral: true });
-      }
-
     }
 
-  }); // ✅ إغلاق interactionCreate
+  });
 
-}); // ✅ إغلاق ready
+});
 
-// ================= START =================
 client.login(process.env.DISCORD_TOKEN);
-startBot();
+setTimeout(startBot, 15000);
