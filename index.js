@@ -244,12 +244,43 @@ new ButtonBuilder()
 
 
       if (i.customId === "ادارة") {
-    return i.reply({
-        content: "🛡️ تم فتح قائمة الإدارة (سنضيف الأوامر بالخطوة التالية).",
-        ephemeral: true
-    });
+
+const row = new ActionRowBuilder().addComponents(
+
+new ButtonBuilder()
+.setCustomId("players")
+.setLabel("👥 اللاعبين")
+.setStyle(ButtonStyle.Primary),
+
+new ButtonBuilder()
+.setCustomId("tp")
+.setLabel("📥 سحب")
+.setStyle(ButtonStyle.Success),
+
+new ButtonBuilder()
+.setCustomId("kick")
+.setLabel("👢 طرد")
+.setStyle(ButtonStyle.Danger),
+
+new ButtonBuilder()
+.setCustomId("ban")
+.setLabel("🔨 باند")
+.setStyle(ButtonStyle.Danger),
+
+new ButtonBuilder()
+.setCustomId("unban")
+.setLabel("🔓 فك باند")
+.setStyle(ButtonStyle.Secondary)
+
+);
+
+return i.reply({
+content:"🛡️ قائمة الإدارة",
+components:[row],
+ephemeral:true
+});
+
 }
-    }
   });
 
 });
