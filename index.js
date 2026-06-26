@@ -151,9 +151,12 @@ function startBot() {
       port: parseInt(process.env.MC_PORT) || 25565,
       username: "𝗜𝗿𝗮𝗾 𝗕𝗮𝗯𝘆𝗹𝗼𝗻 𝗦𝗠𝗣",
       auth: 'offline',
-      version: false,
+      version: "1.20.4",  // ← الإصدار المطلوب
       hideErrors: true,
-      logErrors: false
+      logErrors: false,
+      checkTimeoutInterval: 60000,
+      keepAlive: true,
+      keepAliveInterval: 15000
     });
 
     bot.on('spawn', () => {
