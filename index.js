@@ -7,7 +7,10 @@ const {
   ButtonBuilder,
   ButtonStyle,
   StringSelectMenuBuilder,
-  EmbedBuilder
+  EmbedBuilder,
+  ModalBuilder,
+  TextInputBuilder,
+  TextInputStyle
 } = require('discord.js');
 
 // ================= OWNER =================
@@ -16,6 +19,7 @@ const OWNER_ID = "1221550661263429787";
 // ================= CONFIG =================
 const ADMIN_CHANNEL_ID = "1519954672994226196";
 const PUBLIC_CHANNEL_ID = "1519685707709550622";
+const REQUEST_CHANNEL_ID = "ايدي_روم_الطلبات_هنا";  // ← غير هذا لأيدي روم الطلبات
 
 // ================= DATA =================
 const FILE = "./allowed.json";
@@ -126,9 +130,9 @@ async function updateServerStatus() {
 
     const row = new ActionRowBuilder().addComponents(
       new ButtonBuilder()
-        .setLabel("🚀 انضم الآن")
-        .setStyle(ButtonStyle.Link)
-        .setURL(`https://www.google.com/`)
+        .setCustomId("request_ip")
+        .setLabel("🔐 طلب الآيبي")
+        .setStyle(ButtonStyle.Primary)
     );
 
     if (statusMessage) {
@@ -313,9 +317,9 @@ client.once('ready', () => {
 
       const row = new ActionRowBuilder().addComponents(
         new ButtonBuilder()
-          .setLabel("🚀 انضم الآن")
-          .setStyle(ButtonStyle.Link)
-          .setURL(`https://www.google.com/`)
+          .setCustomId("request_ip")
+          .setLabel("🔐 طلب الآيبي")
+          .setStyle(ButtonStyle.Primary)
       );
 
       return msg.reply({ embeds: [embed], components: [row] });
@@ -403,11 +407,140 @@ client.once('ready', () => {
   // ================= الأزرار =================
   client.on('interactionCreate', async (i) => {
 
-    if (i.channelId !== ADMIN_CHANNEL_ID) {
+    // ================= زر طلب الآيبي =================
+    if (i.customId === "request_ip") {
+
+      if (i.channelId !== PUBLIC_CHANNEL_ID) {
+        return i.reply({
+          content: "❌ هذا الروم غير مخصص للطلبات.",
+          ephemeral: true
+        });
+      }
+
+      const requestChannel = client.channels.cache.get(REQUEST_CHANNEL_ID);
+      if (requestChannel) {
+
+        const requestEmbed = new EmbedBuilder()
+          .setTitle("🔐 طلب آيبي جديد")
+          .setDescription(`**${i.user.username}** يطلب آيبي السيرفر!`)
+          .setColor(0xFFA500)
+          .addFields(
+            { name: "👤 المستخدم", value: `${i.user}`, inline: true },
+            { name: "🆔 الأيدي", value: `\`${i.user.id}\``, inline: true },
+            { name: "📅 الوقت", value: `<t:${Math.floor(Date.now() / 1000)}:F>`, inline: false }
+          )
+          .setFooter({ text: "اضغط على زر الرد لإرسال الآيبي" })
+          .setTimestamp();
+
+        const row = new ActionRowBuilder().addComponents(
+          new ButtonBuilder()
+            .setCustomId(`reply_ip_${i.user.id}`)
+            .setLabel("📩 رد على الطلب")
+            .setStyle(ButtonStyle.Success)
+        );
+
+        await requestChannel.send({ embeds: [requestEmbed], components: [row] });
+      }
+
       return i.reply({
-        content: "❌ هذا الروم غير مخصص للتحكم",
+        content: "✅ تم إرسال طلبك! سيتم التواصل معك قريباً.",
         ephemeral: true
       });
+    }
+
+    // ================= زر الرد على الطلب (للمالك فقط) =================
+    if (i.customId.startsWith("reply_ip_")) {
+
+      if (i.user.id !== OWNER_ID) {
+        return i.reply({
+          content: "❌ ممنوع، هذا الزر للمالك فقط.",
+          ephemeral: true
+        });
+      }
+
+      const userId = i.customId.replace("reply_ip_", "");
+      const user = await client.users.fetch(userId).catch(() => null);
+
+      if (!user) {
+        return i.reply({
+          content: "❌ المستخدم غير موجود.",
+          ephemeral: true
+        });
+      }
+
+      const modal = new ModalBuilder()
+        .setCustomId(`send_ip_${userId}`)
+        .setTitle("📩 إرسال الآيبي");
+
+      const input = new TextInputBuilder()
+        .setCustomId("ip_input")
+        .setLabel("اكتب آيبي السيرفر هنا")
+        .setStyle(TextInputStyle.Short)
+        .setPlaceholder(`مثال: 194.45.197.219:30130`)
+        .setRequired(true);
+
+      const row = new ActionRowBuilder().addComponents(input);
+      modal.addComponents(row);
+
+      return i.showModal(modal);
+    }
+
+    // ================= معالجة إرسال الآيبي =================
+    if (i.isModalSubmit() && i.customId.startsWith("send_ip_")) {
+
+      if (i.user.id !== OWNER_ID) {
+        return i.reply({
+          content: "❌ ممنوع",
+          ephemeral: true
+        });
+      }
+
+      const userId = i.customId.replace("send_ip_", "");
+      const user = await client.users.fetch(userId).catch(() => null);
+      const ip = i.fields.getTextInputValue("ip_input");
+
+      if (!user) {
+        return i.reply({
+          content: "❌ المستخدم غير موجود.",
+          ephemeral: true
+        });
+      }
+
+      try {
+        await user.send({
+          content: `🎮 **آيبي السيرفر:**\n\`${ip}\``
+        });
+
+        await i.reply({
+          content: `✅ تم إرسال الآيبي إلى ${user.username}`,
+          ephemeral: true
+        });
+
+        const requestChannel = client.channels.cache.get(REQUEST_CHANNEL_ID);
+        if (requestChannel) {
+          await requestChannel.send({
+            content: `✅ **تم إرسال الآيبي** إلى ${user} بواسطة ${i.user}`
+          });
+        }
+
+      } catch (e) {
+        await i.reply({
+          content: `❌ خطأ: المستخدم عنده الخاصية مقفلة.`,
+          ephemeral: true
+        });
+      }
+    }
+
+    // ================= باقي الأزرار (للمالك فقط) =================
+    if (i.channelId !== ADMIN_CHANNEL_ID) {
+      // نسمح فقط بزر طلب الآيبي في الروم العام
+      if (i.customId !== "request_ip") {
+        return i.reply({
+          content: "❌ هذا الروم غير مخصص للتحكم",
+          ephemeral: true
+        });
+      }
+      return; // خلصنا من زر طلب الآيبي
     }
 
     if (i.user.id !== OWNER_ID) {
