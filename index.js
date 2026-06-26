@@ -210,7 +210,7 @@ function startBot() {
 
     bot.on('end', () => {
       console.log("🔄 Reconnecting in 10 seconds...");
-      setTimeout(startBot, 10000);  // ← 10 ثواني
+      setTimeout(startBot, 10000);
     });
 
     bot.on('kicked', (r) => {
@@ -219,7 +219,7 @@ function startBot() {
         console.log("⏳ انتظر 3 دقائق...");
         setTimeout(startBot, 180000);
       } else {
-        setTimeout(startBot, 10000);  // ← 10 ثواني
+        setTimeout(startBot, 10000);
       }
     });
 
@@ -229,13 +229,13 @@ function startBot() {
         console.log("⏳ انتظر دقيقتين...");
         setTimeout(startBot, 120000);
       } else {
-        setTimeout(startBot, 10000);  // ← 10 ثواني
+        setTimeout(startBot, 10000);
       }
     });
 
   } catch (e) {
     console.log("💥 Crash:", e.message);
-    setTimeout(startBot, 10000);  // ← 10 ثواني
+    setTimeout(startBot, 10000);
   }
 }
 
@@ -546,4 +546,4 @@ client.once('ready', () => {
 });
 
 client.login(process.env.DISCORD_TOKEN);
-setTimeout(startBot, 10000);  // ← 10 ثواني
+setTimeout(startBot, 10000);
