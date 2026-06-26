@@ -1,6 +1,6 @@
 {
-  "name": "mc-discord-whitelist-bot",
-  "version": "7.0.0",
+  "name": "mc-full-system-bot",
+  "version": "9.0.0",
   "main": "index.js",
   "type": "commonjs",
   "scripts": {
