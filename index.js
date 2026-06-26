@@ -239,7 +239,7 @@ new ButtonBuilder()
       return i.reply("🔴 البوت متوقف");
     }
 
-  if (i.customId === 'حالة') {
+ if (i.customId === 'حالة') {
   return i.reply(`📊 اللاعبين: ${Object.keys(bot?.players || {}).length}`);
 }
 
@@ -295,46 +295,11 @@ if (i.customId === "players") {
 
   return i.reply({
     content: players.length
-      ? "👥 اللاعبين:\n\n" + players.join("\n")
-      : "❌ لا يوجد لاعبين.",
+      ? "👥 اللاعبين المتصلين:\n\n" + players.join("\n")
+      : "❌ لا يوجد لاعبين متصلين.",
     ephemeral: true
   });
 
-}
-  const row = new ActionRowBuilder().addComponents(
-
-    new ButtonBuilder()
-      .setCustomId("players")
-      .setLabel("👥 اللاعبين")
-      .setStyle(ButtonStyle.Primary),
-
-    new ButtonBuilder()
-      .setCustomId("tp")
-      .setLabel("📥 سحب")
-      .setStyle(ButtonStyle.Success),
-
-    new ButtonBuilder()
-      .setCustomId("kick")
-      .setLabel("👢 طرد")
-      .setStyle(ButtonStyle.Danger),
-
-    new ButtonBuilder()
-      .setCustomId("ban")
-      .setLabel("🔨 باند")
-      .setStyle(ButtonStyle.Danger),
-
-    new ButtonBuilder()
-      .setCustomId("unban")
-      .setLabel("🔓 فك باند")
-      .setStyle(ButtonStyle.Secondary)
-
-  );
-
-  return i.reply({
-    content: "🛡️ قائمة الإدارة",
-    components: [row],
-    ephemeral: true
-  });
 }
 
 });
