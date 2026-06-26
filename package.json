@@ -1,6 +1,6 @@
 {
-  "name": "mc-discord-pro-bot",
-  "version": "3.0.0",
+  "name": "mc-discord-pro-ultimate",
+  "version": "4.1.0",
   "main": "index.js",
   "type": "commonjs",
   "scripts": {
@@ -11,6 +11,7 @@
     "express": "^4.19.2",
     "mineflayer": "^4.20.0",
     "mineflayer-pathfinder": "^2.4.5",
-    "minecraft-data": "^3.0.0"
+    "minecraft-data": "^3.0.0",
+    "mongoose": "^8.0.0"
   }
 }
