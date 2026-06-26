@@ -274,6 +274,7 @@ if (i.customId === 'ادارة') {
 
   );
 
+
   return i.reply({
     content: "🛡️ قائمة الإدارة",
     components: [row],
