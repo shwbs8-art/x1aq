@@ -1,59 +1,33 @@
 const mineflayer = require('mineflayer');
 const express = require('express');
-const { Client, GatewayIntentBits } = require('discord.js');
+const {
+  Client,
+  GatewayIntentBits,
+  ActionRowBuilder,
+  ButtonBuilder,
+  ButtonStyle
+} = require('discord.js');
 
 // ================= CONFIG =================
+const OWNER_ID = process.env.OWNER_ID;
 const PORT = process.env.PORT || 3000;
-const DASH_KEY = process.env.DASHBOARD_KEY;
 
 // ================= STATE =================
 let bot;
 let playersCount = 0;
-let botStatus = "offline";
 
-// ================= EXPRESS (DASHBOARD) =================
+// ================= EXPRESS =================
 const app = express();
-app.use(express.json());
-
-// 🌐 Home page
-app.get('/', (req, res) => {
-  res.send("MC Bot Dashboard Running ✅");
-});
-
-// 📊 Dashboard JSON API
-app.get('/api/status', (req, res) => {
+app.get('/', (req, res) => res.send("MC Bot Running ✅"));
+app.get('/status', (req, res) => {
   res.json({
-    status: botStatus,
+    status: bot ? "online" : "offline",
     players: playersCount
   });
 });
 
-// 🎛️ CONTROL API (Dashboard buttons)
-app.post('/api/control', (req, res) => {
-
-  if (req.headers.key !== DASH_KEY) {
-    return res.status(403).send("No Access");
-  }
-
-  const action = req.body.action;
-
-  if (action === "restart") {
-    restartBot();
-    return res.json({ ok: true, msg: "restarted" });
-  }
-
-  if (action === "say") {
-    if (bot && req.body.message) {
-      bot.chat(req.body.message);
-      return res.json({ ok: true });
-    }
-  }
-
-  res.json({ ok: false });
-});
-
 app.listen(PORT, () => {
-  console.log("Dashboard running on port " + PORT);
+  console.log("Web running on port " + PORT);
 });
 
 // ================= DISCORD =================
@@ -65,9 +39,8 @@ const client = new Client({
   ]
 });
 
-function log(msg) {
-  const ch = client.channels.cache.get(process.env.LOG_CHANNEL_ID);
-  if (ch) ch.send(msg).catch(() => {});
+function isOwner(msg) {
+  return msg.author.id === OWNER_ID;
 }
 
 // ================= MINECRAFT BOT =================
@@ -81,11 +54,8 @@ function startBot() {
     version: "1.21.11"
   });
 
-  botStatus = "connecting";
-
   bot.on('spawn', () => {
-    botStatus = "online";
-    log("🟢 Bot Connected");
+    console.log("Bot Online");
 
     // حركة بسيطة
     setInterval(() => {
@@ -99,87 +69,118 @@ function startBot() {
       }
 
     }, 4000);
+
+    // 💬 AI Chat Replies
+    bot.on('chat', (user, msg) => {
+
+      const text = msg.toLowerCase();
+
+      const ai = {
+        "hi": "هلا بيك 👋",
+        "hello": "أهلاً وسهلاً 🔥",
+        "شلونك": "تمام وانت؟ 😄",
+        "gg": "GG 🔥",
+        "bye": "مع السلامة 👋"
+      };
+
+      if (ai[text]) {
+        setTimeout(() => bot.chat(ai[text]), 1000);
+      }
+    });
   });
 
-  // 👥 Players tracking
+  // 👥 Players
   bot.on('playerJoined', (p) => {
     playersCount = Object.keys(bot.players).length;
-    log(`🟢 Joined: ${p.username}`);
+    console.log("Join:", p.username);
   });
 
   bot.on('playerLeft', (p) => {
     playersCount = Object.keys(bot.players).length;
-    log(`🔴 Left: ${p.username}`);
+    console.log("Left:", p.username);
   });
 
-  // 💬 chat relay
-  bot.on('chat', (u, msg) => {
-    log(`💬 ${u}: ${msg}`);
-  });
+  // 🔄 reconnect
+  bot.on('end', () => setTimeout(startBot, 5000));
 
-  // 🔄 restart
-  bot.on('end', () => {
-    botStatus = "offline";
-    setTimeout(startBot, 5000);
-  });
-
-  bot.on('error', (e) => {
-    log("⚠️ " + e.message);
-  });
+  bot.on('error', (e) => console.log(e.message));
 }
 
-// ================= DISCORD =================
+// ================= DISCORD PANEL =================
 client.once('ready', () => {
+
   console.log("Discord Ready");
 
-  // panel command
-  client.on('messageCreate', (msg) => {
+  // 🎛️ لوحة التحكم
+  client.on('messageCreate', async (msg) => {
 
-    if (msg.content === "!panel") {
-      msg.reply(`
-🎛️ Dashboard Commands:
+    if (msg.content === "!لوحة") {
 
-📊 GET STATUS:
-GET /api/status
+      if (!isOwner(msg)) return msg.reply("❌ ما عندك صلاحية");
 
-🎮 CONTROL:
-POST /api/control
-- restart
-- say
-      `);
+      const row = new ActionRowBuilder().addComponents(
+
+        new ButtonBuilder()
+          .setCustomId('تشغيل')
+          .setLabel('🟢 تشغيل السيرفر')
+          .setStyle(ButtonStyle.Success),
+
+        new ButtonBuilder()
+          .setCustomId('ايقاف')
+          .setLabel('🔴 إيقاف السيرفر')
+          .setStyle(ButtonStyle.Danger),
+
+        new ButtonBuilder()
+          .setCustomId('حالة')
+          .setLabel('📊 حالة السيرفر')
+          .setStyle(ButtonStyle.Primary)
+
+      );
+
+      msg.reply({
+        content: "🎛️ لوحة التحكم",
+        components: [row]
+      });
     }
 
-    // 💬 send message to minecraft
+    // 💬 إرسال رسالة داخل ماينكرافت
     if (msg.content.startsWith("!say ")) {
+      if (!isOwner(msg)) return;
       const text = msg.content.slice(5);
-      if (bot) bot.chat(text);
+      bot?.chat(text);
     }
 
-    // 🔄 restart bot
+    // 🔄 restart
     if (msg.content === "!restart") {
-      restartBot();
-      msg.reply("🔄 Restarting...");
+      if (!isOwner(msg)) return;
+      bot?.end();
+      msg.reply("🔄 تم إعادة التشغيل");
+    }
+  });
+
+  // 🎮 Buttons Control
+  client.on('interactionCreate', async (i) => {
+
+    if (!i.isButton()) return;
+    if (i.user.id !== OWNER_ID) {
+      return i.reply({ content: "❌ غير مصرح", ephemeral: true });
     }
 
+    if (i.customId === 'تشغيل') {
+      bot?.setControlState('forward', true);
+      i.reply("🟢 البوت يتحرك الآن");
+    }
+
+    if (i.customId === 'ايقاف') {
+      bot?.clearControlStates();
+      i.reply("🔴 تم إيقاف البوت");
+    }
+
+    if (i.customId === 'حالة') {
+      i.reply(`📊 اللاعبين: ${playersCount}`);
+    }
   });
-});
 
-// ================= SAFE RESTART =================
-function restartBot() {
-  try {
-    bot?.end();
-  } catch {}
-  setTimeout(startBot, 3000);
-}
-
-// ================= CRASH PROTECTION =================
-process.on('uncaughtException', (e) => {
-  console.log("Crash:", e.message);
-  restartBot();
-});
-
-process.on('unhandledRejection', () => {
-  restartBot();
 });
 
 // ================= START =================
