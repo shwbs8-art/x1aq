@@ -9,7 +9,7 @@ const {
 } = require('discord.js');
 
 // ================= CONFIG =================
-const OWNER_ID = process.env.OWNER_ID;
+const OWNER_ID = process.1221550661263429787;
 const PORT = process.env.PORT || 3000;
 
 // ================= STATE =================
