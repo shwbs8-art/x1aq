@@ -154,23 +154,29 @@ client.once('ready', () => {
     // 🎛️ لوحة التحكم
     if (cmd === "!لوحة") {
 
-      const row = new ActionRowBuilder().addComponents(
+     const row = new ActionRowBuilder().addComponents(
 
-        new ButtonBuilder()
-          .setCustomId('تشغيل')
-          .setLabel('🟢 تشغيل')
-          .setStyle(ButtonStyle.Success),
+new ButtonBuilder()
+.setCustomId("تشغيل")
+.setLabel("🟢 تشغيل")
+.setStyle(ButtonStyle.Success),
 
-        new ButtonBuilder()
-          .setCustomId('ايقاف')
-          .setLabel('🔴 إيقاف')
-          .setStyle(ButtonStyle.Danger),
+new ButtonBuilder()
+.setCustomId("ايقاف")
+.setLabel("🔴 إيقاف")
+.setStyle(ButtonStyle.Danger),
 
-        new ButtonBuilder()
-          .setCustomId('حالة')
-          .setLabel('📊 حالة')
-          .setStyle(ButtonStyle.Primary)
-      );
+new ButtonBuilder()
+.setCustomId("حالة")
+.setLabel("📊 حالة")
+.setStyle(ButtonStyle.Primary),
+
+new ButtonBuilder()
+.setCustomId("ادارة")
+.setLabel("🛡️ الإدارة")
+.setStyle(ButtonStyle.Secondary)
+
+);
 
       return msg.reply({ content: "🎛️ لوحة التحكم", components: [row] });
     }
@@ -234,7 +240,15 @@ client.once('ready', () => {
     }
 
     if (i.customId === 'حالة') {
-      return i.reply(`📊 اللاعبين: ${Object.keys(bot?.players || {}).length}`);
+      return i.reply(`📊 اللاعبين: ${Object.keys(bot?.players || {}).length}`); 
+
+
+      if (i.customId === "ادارة") {
+    return i.reply({
+        content: "🛡️ تم فتح قائمة الإدارة (سنضيف الأوامر بالخطوة التالية).",
+        ephemeral: true
+    });
+}
     }
   });
 
