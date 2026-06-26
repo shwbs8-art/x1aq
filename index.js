@@ -244,7 +244,18 @@ new ButtonBuilder()
 }
 
 if (i.customId === 'ادارة') {
+if (i.customId === "players") {
 
+  const players = Object.keys(bot.players);
+
+  return i.reply({
+    content: players.length
+      ? "👥 اللاعبين المتصلين:\n\n" + players.join("\n")
+      : "❌ لا يوجد لاعبين متصلين.",
+    ephemeral: true
+  });
+
+}
   const row = new ActionRowBuilder().addComponents(
 
     new ButtonBuilder()
