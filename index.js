@@ -258,6 +258,11 @@ if (i.customId === 'ادارة') {
       .setStyle(ButtonStyle.Success),
 
     new ButtonBuilder()
+      .setCustomId("goto")
+      .setLabel("📍 انتقال")
+      .setStyle(ButtonStyle.Success),
+
+    new ButtonBuilder()
       .setCustomId("kick")
       .setLabel("👢 طرد")
       .setStyle(ButtonStyle.Danger),
@@ -273,6 +278,14 @@ if (i.customId === 'ادارة') {
       .setStyle(ButtonStyle.Secondary)
 
   );
+
+  return i.reply({
+    content: "🛡️ قائمة الإدارة",
+    components: [row],
+    ephemeral: true
+  });
+
+}
 
 
   return i.reply({
