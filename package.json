@@ -1,6 +1,6 @@
 {
-  "name": "mc-dashboard-bot",
-  "version": "5.0.0",
+  "name": "mc-discord-admin-bot",
+  "version": "6.0.0",
   "main": "index.js",
   "type": "commonjs",
   "scripts": {
