@@ -1,6 +1,6 @@
 {
-  "name": "mc-discord-pro-ultimate",
-  "version": "4.1.0",
+  "name": "mc-dashboard-bot",
+  "version": "5.0.0",
   "main": "index.js",
   "type": "commonjs",
   "scripts": {
@@ -9,9 +9,6 @@
   "dependencies": {
     "discord.js": "^14.16.0",
     "express": "^4.19.2",
-    "mineflayer": "^4.20.0",
-    "mineflayer-pathfinder": "^2.4.5",
-    "minecraft-data": "^3.0.0",
-    "mongoose": "^8.0.0"
+    "mineflayer": "^4.20.0"
   }
 }
