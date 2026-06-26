@@ -239,48 +239,51 @@ new ButtonBuilder()
       return i.reply("🔴 البوت متوقف");
     }
 
-    if (i.customId === 'حالة') {
-      return i.reply(`📊 اللاعبين: ${Object.keys(bot?.players || {}).length}`); 
+  if (i.customId === 'حالة') {
+  return i.reply(`📊 اللاعبين: ${Object.keys(bot?.players || {}).length}`);
+}
 
+if (i.customId === 'ادارة') {
 
-      if (i.customId === "ادارة") {
+  const row = new ActionRowBuilder().addComponents(
 
-const row = new ActionRowBuilder().addComponents(
+    new ButtonBuilder()
+      .setCustomId("players")
+      .setLabel("👥 اللاعبين")
+      .setStyle(ButtonStyle.Primary),
 
-new ButtonBuilder()
-.setCustomId("players")
-.setLabel("👥 اللاعبين")
-.setStyle(ButtonStyle.Primary),
+    new ButtonBuilder()
+      .setCustomId("tp")
+      .setLabel("📥 سحب")
+      .setStyle(ButtonStyle.Success),
 
-new ButtonBuilder()
-.setCustomId("tp")
-.setLabel("📥 سحب")
-.setStyle(ButtonStyle.Success),
+    new ButtonBuilder()
+      .setCustomId("kick")
+      .setLabel("👢 طرد")
+      .setStyle(ButtonStyle.Danger),
 
-new ButtonBuilder()
-.setCustomId("kick")
-.setLabel("👢 طرد")
-.setStyle(ButtonStyle.Danger),
+    new ButtonBuilder()
+      .setCustomId("ban")
+      .setLabel("🔨 باند")
+      .setStyle(ButtonStyle.Danger),
 
-new ButtonBuilder()
-.setCustomId("ban")
-.setLabel("🔨 باند")
-.setStyle(ButtonStyle.Danger),
+    new ButtonBuilder()
+      .setCustomId("unban")
+      .setLabel("🔓 فك باند")
+      .setStyle(ButtonStyle.Secondary)
 
-new ButtonBuilder()
-.setCustomId("unban")
-.setLabel("🔓 فك باند")
-.setStyle(ButtonStyle.Secondary)
+  );
 
-);
+  return i.reply({
+    content: "🛡️ قائمة الإدارة",
+    components: [row],
+    ephemeral: true
+  });
+}
 
-return i.reply({
-content:"🛡️ قائمة الإدارة",
-components:[row],
-ephemeral:true
 });
 
-}
+});
 
 // ================= START =================
 client.login(process.env.DISCORD_TOKEN);
