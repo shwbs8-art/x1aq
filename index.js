@@ -169,8 +169,30 @@ client.once('ready', () => {
         new ButtonBuilder()
           .setCustomId('حالة')
           .setLabel('📊 حالة')
-          .setStyle(ButtonStyle.Primary)
+          .setStyle(ButtonStyle.Primary),
+
+          new ButtonBuilder()
+.setCustomId("ادارة")
+.setLabel("🛡️ الإدارة")
+.setStyle(ButtonStyle.Secondary),
       );
+
+      if (i.customId === "players") {
+
+const players = Object.keys(bot.players);
+
+return i.reply({
+
+content:
+players.length === 0
+? "❌ ماكو لاعبين."
+: "👥 اللاعبين:\n\n" + players.join("\n"),
+
+ephemeral: true
+
+});
+
+}
 
       return msg.reply({ content: "🎛️ لوحة التحكم", components: [row] });
     }
@@ -234,7 +256,46 @@ client.once('ready', () => {
     }
 
     if (i.customId === 'حالة') {
-      return i.reply(`📊 اللاعبين: ${Object.keys(bot?.players || {}).length}`);
+      return i.reply(`📊 اللاعبين: ${Object.keys(bot?.players || {}).length}`); 
+
+      if (i.customId === "ادارة") {
+
+const row = new ActionRowBuilder().addComponents(
+
+new ButtonBuilder()
+.setCustomId("players")
+.setLabel("👥 اللاعبين")
+.setStyle(ButtonStyle.Primary),
+
+new ButtonBuilder()
+.setCustomId("tp")
+.setLabel("📥 سحب")
+.setStyle(ButtonStyle.Success),
+
+new ButtonBuilder()
+.setCustomId("kick")
+.setLabel("👢 طرد")
+.setStyle(ButtonStyle.Danger),
+
+new ButtonBuilder()
+.setCustomId("ban")
+.setLabel("🔨 باند")
+.setStyle(ButtonStyle.Danger),
+
+new ButtonBuilder()
+.setCustomId("unban")
+.setLabel("🔓 فك باند")
+.setStyle(ButtonStyle.Secondary)
+
+);
+
+return i.reply({
+content:"🛡️ قائمة الإدارة",
+components:[row],
+ephemeral:true
+});
+
+}
     }
   });
 
