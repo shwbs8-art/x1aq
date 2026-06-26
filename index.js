@@ -281,7 +281,6 @@ ephemeral:true
 });
 
 }
-  });
 
 // ================= START =================
 client.login(process.env.DISCORD_TOKEN);
